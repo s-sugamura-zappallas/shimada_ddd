@@ -1,0 +1,212 @@
+openapi: 3.0.1
+info:
+  title: LLM API - Shimada
+  version: "1.0.0"
+
+servers:
+  - url: https://api.llmvendor.com/v1
+
+paths:
+  /llm/shimada/chat:
+    post:
+      summary: 島田さん用LLMチャット
+      description: >
+        サーバー側で systemPrompt を合成し、LLM (Claude等) に問い合わせるためのAPI。
+        フロントからは「analysisLines (もしくは pair 用の analysisLinesPerson1, analysisLinesPerson2, compatibilityTexts)」
+        「固定シナリオ (scenario)」「ユーザー入力(会話履歴等 messages)」を送るだけで良い。
+        サーバ内部で島田さん風の口調や独自設定を行い、LLMにリクエストして返信する。
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                gender:
+                  type: string
+                  enum: [male, female, other]
+                  nullable: true
+                  description: "ユーザーの性別（オプション）"
+                age:
+                  type: integer
+                  minimum: 0
+                  maximum: 120
+                  nullable: true
+                  description: "ユーザーの年齢（オプション）"
+
+                scenario:
+                  type: object
+                  description: |
+                    島田さんの鑑定で使う、複数の質問と回答のペア等の固定シナリオ。
+                    これらをサーバ内で systemPrompt に埋め込み、LLM に投げるイメージ。
+                  properties:
+                    qnas:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          question:
+                            type: string
+                            description: "質問"
+                          answer:
+                            type: string
+                            description: "回答"
+
+                messages:
+                  type: array
+                  description: |
+                    チャット形式を想定する場合のメッセージリスト。
+                    直近のユーザ入力や過去の会話履歴を含めてもOK。
+                  items:
+                    type: object
+                    properties:
+                      role:
+                        type: string
+                        enum: [system, user, assistant]
+                        description: "チャットにおける役割(通常はuser、assistant、systemのいずれか)"
+                      content:
+                        type: string
+                        description: "実際の発話内容"
+
+              oneOf:
+                - title: Single Analysis
+                  properties:
+                    analysisLines:
+                      type: array
+                      description: |
+                        `/palm-reading/analyze/single` の結果として得られる線の説明や分析結果。
+                        シングル分析の場合はこちらを利用。
+                      items:
+                        type: object
+                        properties:
+                          fortuneTellerLineType:
+                            type: string
+                            description: "再分類後の線名 (例: 'KY線')"
+                          description:
+                            type: string
+                            description: "線に関する説明"
+
+                - title: Pair Analysis
+                  properties:
+                    partnerGender:
+                      type: string
+                      enum: [male, female, other]
+                      nullable: true
+                      description: "相手の性別（オプション）"
+                    partnerAge:
+                      type: integer
+                      minimum: 0
+                      maximum: 120
+                      nullable: true
+                      description: "相手の年齢（オプション）"
+
+                    analysisLinesPerson1:
+                      type: array
+                      description: |
+                        `/palm-reading/analyze/pair` の結果。
+                        1人目の線に関する説明。
+                      items:
+                        type: object
+                        properties:
+                          fortuneTellerLineType:
+                            type: string
+                            description: "再分類後の線名"
+                          description:
+                            type: string
+                            description: "線に関する説明"
+
+                    analysisLinesPerson2:
+                      type: array
+                      description: |
+                        `/palm-reading/analyze/pair` の結果。
+                        2人目の線に関する説明。
+                      items:
+                        type: object
+                        properties:
+                          fortuneTellerLineType:
+                            type: string
+                            description: "再分類後の線名"
+                          description:
+                            type: string
+                            description: "線に関する説明"
+
+                    compatibilityTexts:
+                      type: array
+                      description: |
+                        `/palm-reading/analyze/pair` の結果。
+                        2人の相性コメント（複数ある場合も想定）。
+                      items:
+                        type: string
+
+            examples:
+              SingleAnalysisExample:
+                summary: シングル分析の例
+                value:
+                  gender: female
+                  age: 25
+                  analysisLines:
+                    - fortuneTellerLineType: "KY線"
+                      description: "協調性があまりないが発想力がある線です"
+                    - fortuneTellerLineType: "モテ線"
+                      description: "人を惹きつけやすい人気運の強い線"
+                  scenario:
+                    qnas:
+                      - question: "あなたは今一番悩んでいることは何ですか？"
+                        answer: "仕事で成果を出せないのが悩み"
+                      - question: "これまでの人生で一番頑張ったことは？"
+                        answer: "学生時代、部活で全国大会に出るために練習を頑張った"
+                  messages:
+                    - role: user
+                      content: "最近仕事で悩んでます"
+                    - role: assistant
+                      content: "具体的にはどのようなことでしょうか？"
+
+              PairAnalysisExample:
+                summary: ペア分析の例
+                value:
+                  gender: male
+                  age: 30
+                  partnerGender: female
+                  partnerAge: 29
+                  analysisLinesPerson1:
+                    - fortuneTellerLineType: "KY線"
+                      description: "協調性があまりないが発想力がある線です"
+                  analysisLinesPerson2:
+                    - fortuneTellerLineType: "モテ線"
+                      description: "人を惹きつけやすい人気運の強い線"
+                  compatibilityTexts:
+                    - "お二人とも新しいアイデアを出し合いやすい関係です"
+                    - "協力することで周囲を惹きつけやすいコンビになるでしょう"
+                  scenario:
+                    qnas:
+                      - question: "あなたは今一番悩んでいることは何ですか？"
+                        answer: "仕事で成果を出せないのが悩み"
+                      - question: "これまでの人生で一番頑張ったことは？"
+                        answer: "学生時代、部活で全国大会に出るために練習を頑張った"
+                  messages:
+                    - role: user
+                      content: "最近仕事で悩んでます"
+                    - role: assistant
+                      content: "具体的にはどのようなことでしょうか？"
+
+      responses:
+        "200":
+          description: LLM応答(最終鑑定メッセージ)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: "生成された鑑定テキスト"
+                example:
+                  message: "あなたのKY線が物語るのは... 仕事でも独創的なアイデアで活躍できますよ！"
+
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "500":
+          description: Server Error

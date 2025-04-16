@@ -1,0 +1,21 @@
+flowchart LR
+    subgraph "Auth Context"
+    A[AWS Cognito]
+    end
+    subgraph "LLM Integration"
+    C[Bedrock Service]
+    D[Gemini Service]
+    end
+    subgraph "PalmReading Context"
+    B[(PalmReading API)]
+    end
+    subgraph "Front/Client"
+    E[Chapli App]
+    F[Other Client Apps]
+    end
+    E -->|authenticate| A
+    F -->|authenticate| A
+    E -->|call| B
+    F -->|call| B
+    B -->|invoke LLMService| C
+    B -->|fallback| D

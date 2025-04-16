@@ -1,0 +1,84 @@
+classDiagram
+    class PalmReadingAnalysis {
+      - userId: string
+      - gender: string
+      - age: integer
+      - partnerGender: string
+      - partnerAge: integer
+      - scenario: Scenario
+      - analysisLines: AnalysisLine[] 
+      - analysisLinesPerson1: AnalysisLine[]
+      - analysisLinesPerson2: AnalysisLine[]
+      - compatibilityTexts: string[]
+      - messages: ChatMessage[]
+      + generatePrompt(fortuneTeller): string
+      + getAnalysisType(): AnalysisType
+    }
+    
+    class AnalysisType {
+      <<enumeration>>
+      SINGLE
+      PAIR
+    }
+    
+    class AnalysisLine {
+      - fortuneTellerLineType: string
+      - description: string
+    }
+    
+    class ChatMessage {
+      - role: string (system/user/assistant)
+      - content: string
+    }
+    
+    class Scenario {
+      - qnas: QnA[]
+    }
+    
+    class QnA {
+      - question: string
+      - answer: string
+    }
+    
+    class LLMService {
+      <<interface>>
+      + generateResponse(prompt: string): string
+    }
+    
+    class BedrockService {
+      + generateResponse(prompt: string): string
+    }
+    
+    class GeminiService {
+      + generateResponse(prompt: string): string
+    }
+    
+    class FortuneTeller {
+      - name: string
+      - styleGuide: string
+      + createSystemPrompt(analysis: PalmReadingAnalysis): string
+    }
+    
+    class ShimadaFortuneTeller {
+      - specialPhrases: string[]
+      + createShimadaStyleResponse(response: string): string
+    }
+    
+    class PalmReadingService {
+      - llmService: LLMService
+      - fortuneTeller: FortuneTeller
+      + analyzeSingle(analysis: PalmReadingAnalysis): string
+      + analyzePair(analysis: PalmReadingAnalysis): string
+    }
+    
+    PalmReadingAnalysis --> "0..*" AnalysisLine : contains
+    PalmReadingAnalysis --> "0..1" Scenario : has
+    PalmReadingAnalysis --> AnalysisType : returns
+    Scenario --> "1..*" QnA : contains
+    PalmReadingAnalysis --> "0..*" ChatMessage : contains
+    LLMService <|-- BedrockService : implements
+    LLMService <|-- GeminiService : implements
+    FortuneTeller <|-- ShimadaFortuneTeller : extends
+    PalmReadingService --> LLMService : uses
+    PalmReadingService --> FortuneTeller : uses
+    PalmReadingService --> PalmReadingAnalysis : processes

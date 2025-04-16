@@ -1,0 +1,13 @@
+flowchart TB
+    A["Front (Chapli App)"] -->|"1. POST /llm/shimada/chat"| B["API Controller"]
+    B -->|"2. Zod Validation"| C["Application Layer"]
+    C -->|"3. Assemble SystemPrompt & domain objects"| D["Domain Model (PalmReadingAnalysis)"]
+    D -->|"4. Build prompt"| E["FortuneTeller (styleGuide)"]
+    E -->|"5. createSystemPrompt()"| F["LLMService(Bedrock)"]
+    F -->|"6. Send to LLM, get response"| G[("LLM API")]
+    G -->|"7. response ok/fail"| F
+    F -->|"8. fallback if fail => Gemini"| H["LLMService(Gemini)"]
+    H -->|"9. Send to LLM, get response"| I[("LLM API2")]
+    I -->|"10. response"| H
+    H -->|"11. Final text"| C
+    C -->|"12. Return JSON"| A
